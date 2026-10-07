@@ -1,0 +1,332 @@
+{
+  "version": 1,
+  "projectName": "Grav_fields",
+  "textures": [
+    {
+      "id": "tex-default",
+      "name": "Buffer_calcul",
+      "type": "vec3f",
+      "fill": "empty",
+      "size": {
+        "x": 512,
+        "y": 256,
+        "z": 1
+      },
+      "sizeInput": {
+        "x": "SX",
+        "y": "SY",
+        "z": "1"
+      },
+      "values": []
+    },
+    {
+      "id": "d416ce86-25a9-4160-806e-e75250aa74fa",
+      "name": "Affichage",
+      "type": "vec3f",
+      "fill": "empty",
+      "size": {
+        "x": 512,
+        "y": 256,
+        "z": 1
+      },
+      "sizeInput": {
+        "x": "SX",
+        "y": "SY",
+        "z": "1"
+      },
+      "values": []
+    },
+    {
+      "id": "01471f0a-3b7b-4c19-9e4d-46f6c06aedca",
+      "name": "Masses",
+      "type": "uint",
+      "fill": "empty",
+      "size": {
+        "x": 3,
+        "y": 2,
+        "z": 1
+      },
+      "sizeInput": {
+        "x": "3",
+        "y": "NbCorps",
+        "z": "1"
+      },
+      "values": []
+    },
+    {
+      "id": "21a28b41-b749-424c-bd15-0f1f86da0341",
+      "name": "Marqueurs",
+      "type": "float",
+      "fill": "empty",
+      "size": {
+        "x": 9,
+        "y": 5,
+        "z": 1
+      },
+      "sizeInput": {
+        "x": "9",
+        "y": "NbMaxMarqueurs",
+        "z": "1"
+      },
+      "values": []
+    },
+    {
+      "id": "01a538e7-cd60-466d-91f0-281299b794f2",
+      "name": "Variables_globales",
+      "type": "int",
+      "fill": "empty",
+      "size": {
+        "x": 2,
+        "y": 1,
+        "z": 1
+      },
+      "sizeInput": {
+        "x": "2",
+        "y": "1",
+        "z": "1"
+      },
+      "values": []
+    }
+  ],
+  "shaders": [
+    {
+      "id": "1a434bcf-92dc-48ab-abc2-59b7d3073564",
+      "name": "Init_values",
+      "workgroup": {
+        "x": 8,
+        "y": 8,
+        "z": 1
+      },
+      "code": "@compute @workgroup_size(1, 1, 1)\nfn Init_values(@builtin(global_invocation_id) gid : vec3<u32>) {\n    \t\tMasses[0]=u32(SX/2);\n\t\t\t\tMasses[1]=u32(SY/2);\n\t\t\t\tMasses[2]=1000;\n\t\t\t\tMasses[3]=u32(SX/2+cos(f32(step)/50)*SX/4);\n\t\t\t\tMasses[4]=u32(SY/2+sin(f32(step)/50)*SY/4);\n\t\t\t\tMasses[5]=100;\n}\n",
+      "bufferIds": [
+        "01471f0a-3b7b-4c19-9e4d-46f6c06aedca",
+        "21a28b41-b749-424c-bd15-0f1f86da0341"
+      ]
+    },
+    {
+      "id": "210981ac-3a67-45b1-92ca-74185d054fed",
+      "name": "Calcul_forces",
+      "workgroup": {
+        "x": 8,
+        "y": 8,
+        "z": 1
+      },
+      "code": "@compute @workgroup_size(WGX, WGY, 1)\nfn Calcul_forces(@builtin(global_invocation_id) gid : vec3<u32>) {\n    let index = gid.y * SX + gid.x;\n\t\tlet G =6.674;\n\t\tfor(var i=0 ; i<NbCorps*3 ; i+=3){\t\n\t\t\t\tvar x = Masses[i];\n\t\t\t\tvar y = Masses[i+1];\n\t\t\t\tvar masse = Masses[i+2];\n\t\t\t\tvar r = distance(f32(gid.x),f32(gid.y),f32(x), f32(y));\n\t\t\t\tvar p = G*(f32(masse)/f32(r*r));\n    \t\tBuffer_calcul[index].z = Buffer_calcul[index].z + p;\n\t\t\t\tlet forces=calcul_vecteur(f32(gid.x),f32(gid.y),f32(x), f32(y), p);\n\t\t\t\tBuffer_calcul[index].x=Buffer_calcul[index].x+forces.x;\n\t\t\t\tBuffer_calcul[index].y=Buffer_calcul[index].y+forces.y;\n\t\t}\n\n}\n\nfn distance(x0 : f32, y0 : f32, x1 :f32, y1 : f32) ->f32{\n\t\tlet dist_pts=(x1-x0)*(x1-x0)+(y1-y0)*(y1-y0);\n\t\treturn dist_pts;\n}\n\nfn calcul_vecteur(x0:f32, y0:f32, x1:f32, y1:f32,p:f32)->vec2<f32>{\n\t\tlet angleX=acos((x1-x0)/(sqrt((x1-x0)*(x1-x0)+(y1-y0)*(y1-y0))));\n\t\tlet angleY=acos((y1-y0)/(sqrt((x1-x0)*(x1-x0)+(y1-y0)*(y1-y0))));\n\t\tlet x=degrees(cos(angleX)*p);\n\t\tlet y=degrees(cos(angleY)*p);\n\t\treturn vec2<f32>(x,y);\n}\n",
+      "bufferIds": [
+        "tex-default",
+        "01471f0a-3b7b-4c19-9e4d-46f6c06aedca",
+        "21a28b41-b749-424c-bd15-0f1f86da0341"
+      ]
+    },
+    {
+      "id": "bf772edf-366d-4210-b600-a7434723e8f6",
+      "name": "Genere_marqueurs",
+      "workgroup": {
+        "x": 8,
+        "y": 8,
+        "z": 1
+      },
+      "code": "@compute @workgroup_size(1, 1, 1)\nfn Genere_marqueurs(@builtin(global_invocation_id) gid : vec3<u32>) {\n   \tif(mouseBtn !=0 && Variables_globales[1]==0){ // && (mouseX<0 && mouseX>SX && mouseY<0 && mouseY>SY)\n\t\t\t\tVariables_globales[1]=2;//nb de frames avant nouveau click\n\t\t\t\tfor(var i=0;i<NbMaxMarqueurs*9;i+=9){\n\t\t\t\t\t\tif(Marqueurs[i+4]!=1){ //si marqueur dispo\n\t\t\t\t\t\t\t\tif ((Variables_globales[0]%2)==0){\n\t\t\t\t\t\t\t\t\t\t//recup coordonnée x\n\t\t\t\t\t\t\t\t\t\tMarqueurs[i]=f32(mouseX);\n\t\t\t\t\t\t\t\t\t\tMarqueurs[i+5]=Marqueurs[i];\n\t\t\t\t\t\t\t\t\t\tMarqueurs[i+7]=Marqueurs[i];\n\t\t\t\t\t\t\t\t\t\t//recup coordonnée y\n\t\t\t\t\t\t\t\t\t\tMarqueurs[i+1]=f32(mouseY);\n\t\t\t\t\t\t\t\t\t\tMarqueurs[i+6]=Marqueurs[i+1];\n\t\t\t\t\t\t\t\t\t\tMarqueurs[i+8]=Marqueurs[i+1];\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\telse if ((Variables_globales[0]%2)==1){\n\t\t\t\t\t\t\t\t\t\tMarqueurs[i+2]=(f32(mouseX)-Marqueurs[i])/10;\n\t\t\t\t\t\t\t\t\t\tMarqueurs[i+3]=(f32(mouseY)-Marqueurs[i+1])/10;\n\t\t\t\t\t\t\t\t\t\tMarqueurs[i+4]=1;\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\tbreak;\n\t\t\t\t\t\t}\n\t\t\t\t}\n\t\tVariables_globales[0]+=1;\t//compteur de clics\n\t\t}\n\t\tif(Variables_globales[1]!=0){\n\t\t\t\tVariables_globales[1]=Variables_globales[1]-1; //decrementation du compteur\n\t\t}\n}\n\n\n",
+      "bufferIds": [
+        "21a28b41-b749-424c-bd15-0f1f86da0341",
+        "01a538e7-cd60-466d-91f0-281299b794f2"
+      ]
+    },
+    {
+      "id": "17dfbf54-af6c-4366-808c-7f85d06bfd3b",
+      "name": "Mouvement_marqueurs",
+      "workgroup": {
+        "x": 8,
+        "y": 8,
+        "z": 1
+      },
+      "code": "@compute @workgroup_size(1, 1, 1)\nfn Mouvement_marqueurs(@builtin(global_invocation_id) gid : vec3<u32>) {\n\t//\tif(step==0){ //inititialisation\n\t//\t\t\t\tMarqueurs[0]=10;\n\t//\t\t\t\tMarqueurs[1]=10;\n\t//\t\t\t\tMarqueurs[2]=1;\n\t//\t\t\t\tMarqueurs[3]=0;\n\t//\t\t\t\tMarqueurs[4]=1;\n\t\t\t\t\t\t//schema de creation manuelle pas à jour\n\t//\t}\n\t//\telse{\n    \t\tfor(var y=0;y<NbMaxMarqueurs*9; y+=9){\t\n\t\t\t\t\t\tif(Marqueurs[y+4]==1){\n\t\t\t\t\t\t\t\t\tlet index = i32(Marqueurs[y + 1]) * SX + i32(Marqueurs[y]); \t\t\t\t//position du marqueur courant dans le buffer\n\t\t\t\t\t\t\t\t\tMarqueurs[y + 7]=Marqueurs[y + 5];    //passage du 1er tampon x au 2eme\n\t\t\t\t\t\t\t\t\tMarqueurs[y + 8]=Marqueurs[y + 6];\t\t//passage du 1er tampon y au 2eme\n\t\t\t\t\t\t\t\t\tMarqueurs[y + 5]=Marqueurs[y];\t\t\t\t//passage du x courant au 1er tampon x\n\t\t\t\t\t\t\t\t\tMarqueurs[y + 6]=Marqueurs[y + 1];\t\t//passage du y courant au 1er tampon y\n\t\t\t\t\t\t\t\t\tMarqueurs[y + 2] = Marqueurs[y + 2] + Buffer_calcul[index].x; \t\t\t\t//calcul vecteur x\n\t\t\t\t\t\t\t\t\tMarqueurs[y + 3] = Marqueurs[y + 3] + Buffer_calcul[index].y; \t\t\t\t//calcul vecteur y\n\t\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\tfor(var i=0;i<NbMaxMarqueurs*9; i+=9){\n\t\t\t\t\t\tif(Marqueurs[i+4]==1){\n\t\t\t\t\t\t\t\tif(Marqueurs[i]>SX || Marqueurs[i]<0 || Marqueurs[i+1]>SY || Marqueurs[i+1]<0){\n\t\t\t\t\t\t\t\t\t\tMarqueurs[i+4]=0;\t\t\t\t//suppression marqueur\n\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\tMarqueurs[i] = Marqueurs[i] + Marqueurs[i+2];\n\t\t\t\t\t\t\t\tMarqueurs[i+1]= Marqueurs[i+1]+Marqueurs[i+3]; \n\t\t\t\t\t\t}\n\t\t\t\t}\n\t\t//}\n}",
+      "bufferIds": [
+        "tex-default",
+        "21a28b41-b749-424c-bd15-0f1f86da0341"
+      ]
+    },
+    {
+      "id": "d8a67948-39a2-48dc-aa2e-9071c8e37e78",
+      "name": "Affiche",
+      "workgroup": {
+        "x": 8,
+        "y": 8,
+        "z": 1
+      },
+      "code": "@compute @workgroup_size(WGX, WGY, 1)\nfn Affiche(@builtin(global_invocation_id) gid : vec3<u32>) {\n    let index = gid.y * SX + gid.x;\n\t\tlet tmp=distrib_color(Buffer_calcul[index].z);\n\t\tif(Affichage[index].x==Affichage[index].y && Affichage[index].x==Affichage[index].z && Affichage[index].x>0.1){\n\t\t\t\tAffichage[index].x-=0.05;\n\t\t\t\tAffichage[index].y-=0.05;\n\t\t\t\tAffichage[index].z-=0.05;\n\t\t}\n\t\telse{\n\t\t\t\tAffichage[index].x=tmp;\n\t\t\t\tAffichage[index].y=0.0;\t\t\n\t\t\t\tAffichage[index].z=0.0;\n\t\t}\n\t\tfor(var i=0;i<NbMaxMarqueurs*7;i+=7){\n\t\t\t\tif((u32(Marqueurs[i+1]) * SX + u32(Marqueurs[i])==index) && Marqueurs[i+4]==1){\n\t\t\t\t\t\t//Affichage[index].x=0.99;\n\t\t\t\t\t\t//Affichage[index].y=0.99;\t\t\n\t\t\t\t\t\t//Affichage[index].z=0.99;\n\t\t\t\t\t\tline(i32(Marqueurs[i+5]),i32(Marqueurs[i+6]),i32(Marqueurs[i+7]),i32(Marqueurs[i+8]), vec3(0.99,0.99,0.99));\n\t\t\t\t}\n\t\t}\n}\n\nfn distrib_color(val: f32)->f32{\n\t\tif(val>0.0 && val<50.0){\n\t\t\t\treturn color(val, 50.0);\n\t\t}else{\n\t\t\t\t\t\treturn 1.0;\n\t\t}\n}\n\nfn color(val: f32, val_max: f32) -> f32{\n\t\t\t\treturn sqrt(sqrt(sqrt(val/val_max)));\n}\n\n fn line(x0 : i32, y0 : i32, x1 : i32, y1 : i32, col : vec3<f32>){\n        var locX0 = x0;\n        var locX1 = x1;\n        var locY0 = y0;\n        var locY1 = y1;\n        var steep = false;\n\n        if (abs(locX0-locX1) < abs(locY0-locY1)) {\n                var temp = locX0;\n                locX0 = locY0;\n                locY0 = temp;\n\n                temp = locX1;\n                locX1 = locY1;\n                locY1 = temp;\n\n                steep = true;\n        }\n\n        if(locX0 > locX1){\n                var temp = locX0;\n                locX0 = locX1;\n                locX1 = temp;\n\n                temp = locY0;\n                locY0 = locY1;\n                locY1 = temp;\n        }\n\n        let dx : i32 = locX1 - locX0;\n        let dy : i32 = locY1 - locY0;\n        let derror : f32 = abs(f32(dy)/f32(dx));    \n        var error : f32 = 0;\n        var y : i32 = locY0;\n\n        for (var x : i32 = locX0; x <= locX1; x++) {\n                if (steep) { Affichage[x*SX+ y] = col; }\n                else { Affichage[y*SX + x] = col; }\n\n                error += derror;\n                if (error > 0.5) {\n                        if (locY1 > locY0){ y += 1; }\n                        else{ y -= 1; }\n                        error -= 1.0;\n                }\n        }\n}",
+      "bufferIds": [
+        "tex-default",
+        "d416ce86-25a9-4160-806e-e75250aa74fa",
+        "21a28b41-b749-424c-bd15-0f1f86da0341"
+      ]
+    },
+    {
+      "id": "ab93a917-64a0-44e2-9c72-de8ba8a05df9",
+      "name": "Refresh",
+      "workgroup": {
+        "x": 8,
+        "y": 8,
+        "z": 1
+      },
+      "code": "@compute @workgroup_size(WGX, WGY, 1)\nfn Refresh(@builtin(global_invocation_id) gid : vec3<u32>) {\n    let index = gid.y * SX + gid.x;\n    Buffer_calcul[index].x = 0.0;\n\t\tBuffer_calcul[index].y = 0.0;\n\t\tBuffer_calcul[index].z = 0.0;\n}\n",
+      "bufferIds": [
+        "tex-default"
+      ]
+    }
+  ],
+  "functions": [
+    {
+      "id": "7cd0cc75-586d-4016-91e9-6a6c98e9199a",
+      "name": "Bibliothèque 1",
+      "code": ""
+    }
+  ],
+  "parameters": [
+    {
+      "id": "2a5e68bd-213f-4c6f-ae3b-e3e7b4206364",
+      "name": "SX",
+      "expr": "512"
+    },
+    {
+      "id": "6a0d648d-2819-44b6-8cb3-80882b3796b8",
+      "name": "SY",
+      "expr": "SX/2"
+    },
+    {
+      "id": "5514e41b-86ee-4c27-92bc-41eb813ed42c",
+      "name": "WGX",
+      "expr": "8"
+    },
+    {
+      "id": "30ca819c-e7e7-4289-bc95-0e5824131732",
+      "name": "WGY",
+      "expr": "8"
+    },
+    {
+      "id": "b4a39e03-d027-458e-a64e-2458460fb4e6",
+      "name": "DispX",
+      "expr": "SX/WGX"
+    },
+    {
+      "id": "5bbda226-4ead-45d4-acea-760862689306",
+      "name": "DispY",
+      "expr": "SY/WGY"
+    },
+    {
+      "id": "d31288f9-4283-48ce-9ee9-c045f3ccd5ff",
+      "name": "NbCorps",
+      "expr": "2"
+    },
+    {
+      "id": "0444e77e-6ad7-4d57-b0d0-4c479082c59f",
+      "name": "NbMaxMarqueurs",
+      "expr": "5"
+    }
+  ],
+  "pipeline": [
+    {
+      "type": "step",
+      "id": "a5127c10-8565-49a7-9142-a3cad10a1f2a",
+      "name": "Pipeline_init",
+      "shaderId": "1a434bcf-92dc-48ab-abc2-59b7d3073564",
+      "activated": true,
+      "dispatch": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      },
+      "dispatchInput": {
+        "x": "1",
+        "y": "1",
+        "z": "1"
+      }
+    },
+    {
+      "type": "step",
+      "id": "c96cc6f9-94c4-46b0-95f3-b33681a4051a",
+      "name": "Pipeline_refresh",
+      "shaderId": "ab93a917-64a0-44e2-9c72-de8ba8a05df9",
+      "activated": true,
+      "dispatch": {
+        "x": 64,
+        "y": 32,
+        "z": 1
+      },
+      "dispatchInput": {
+        "x": "DispX",
+        "y": "DispY",
+        "z": "1"
+      }
+    },
+    {
+      "type": "step",
+      "id": "ed02a1f7-e2fd-4eab-ae36-c3f90aa488c0",
+      "name": "Pipeline_calcul",
+      "shaderId": "210981ac-3a67-45b1-92ca-74185d054fed",
+      "activated": true,
+      "dispatch": {
+        "x": 64,
+        "y": 32,
+        "z": 1
+      },
+      "dispatchInput": {
+        "x": "DispX",
+        "y": "DispY",
+        "z": "1"
+      }
+    },
+    {
+      "type": "step",
+      "id": "cbc47b82-7323-4248-a4bc-753e9193992d",
+      "name": "Pipeline_maker",
+      "shaderId": "bf772edf-366d-4210-b600-a7434723e8f6",
+      "activated": true,
+      "dispatch": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      },
+      "dispatchInput": {
+        "x": "1",
+        "y": "1",
+        "z": "1"
+      }
+    },
+    {
+      "type": "step",
+      "id": "16a2b15a-e638-4531-a98b-990b7a85248c",
+      "name": "Pipleline_move",
+      "shaderId": "17dfbf54-af6c-4366-808c-7f85d06bfd3b",
+      "activated": true,
+      "dispatch": {
+        "x": 1,
+        "y": 1,
+        "z": 1
+      },
+      "dispatchInput": {
+        "x": "1",
+        "y": "1",
+        "z": "1"
+      }
+    },
+    {
+      "type": "step",
+      "id": "f1506aae-59fa-4d83-bf72-b7b890d4f97b",
+      "name": "Pipeline_affiche",
+      "shaderId": "d8a67948-39a2-48dc-aa2e-9071c8e37e78",
+      "activated": true,
+      "dispatch": {
+        "x": 64,
+        "y": 32,
+        "z": 1
+      },
+      "dispatchInput": {
+        "x": "DispX",
+        "y": "DispY",
+        "z": "1"
+      }
+    }
+  ],
+  "pipelineShaderChoiceId": "17dfbf54-af6c-4366-808c-7f85d06bfd3b"
+}
